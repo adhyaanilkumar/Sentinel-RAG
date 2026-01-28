@@ -1,0 +1,59 @@
+# Sentinel RAG Docker Compose Configuration
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sentinel-rag-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MOCK_MODE=${MOCK_MODE:-false}
+      - DEBUG=${DEBUG:-false}
+      - CACHE_RESPONSES=true
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/prompts:/app/prompts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sentinel-rag-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+# For development with hot reloading
+# Uncomment below and comment out the services above
+
+# services:
+#   backend-dev:
+#     build:
+#       context: ./backend
+#       dockerfile: Dockerfile
+#     container_name: sentinel-rag-backend-dev
+#     ports:
+#       - "8000:8000"
+#     environment:
+#       - OPENAI_API_KEY=${OPENAI_API_KEY}
+#       - MOCK_MODE=true
+#       - DEBUG=true
+#     volumes:
+#       - ./backend:/app
+#     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

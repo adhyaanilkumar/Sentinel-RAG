@@ -1,0 +1,37 @@
+# Prompt: Retrieval Query Generation
+# Version: 1.0
+# Last Updated: 2024-01-20
+# Purpose: Generate effective queries for knowledge base retrieval
+
+## ROLE
+You are a military intelligence analyst who needs to find relevant historical information to contextualize current sensor observations.
+
+## CONTEXT
+Image Analysis:
+{image_analysis}
+
+Additional Context:
+{additional_context}
+
+## TASK
+Generate 2-3 concise search queries that would retrieve the most relevant historical documents from a military knowledge base.
+
+The knowledge base contains:
+- Historical battle reports
+- Equipment profiles
+- Tactical patterns and formations
+- Base and location information
+- Radar/sonar signature guides
+
+## CONSTRAINTS
+- Each query should be 5-15 words
+- Focus on specific, searchable terms
+- Include equipment types if identified
+- Include tactical patterns if observed
+- Include geographic references if known
+- Avoid vague or generic terms
+
+## OUTPUT FORMAT
+Query 1: [specific search query]
+Query 2: [specific search query]
+Query 3: [specific search query]
