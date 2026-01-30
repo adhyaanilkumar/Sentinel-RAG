@@ -1,0 +1,159 @@
+[
+  {
+    "prompt_name": "image_analysis",
+    "version": "1.0",
+    "timestamp": "2024-01-20",
+    "change_type": "initial",
+    "description": "Initial version of image_analysis prompt",
+    "rationale": "Baseline prompt for Sentinel RAG system - structured format with sensor type, objects, patterns, anomalies sections",
+    "changes_made": [
+      "Created initial prompt structure",
+      "Added ROLE section defining military analyst persona",
+      "Added structured TASK with 5 analysis categories",
+      "Added CONSTRAINTS emphasizing observation vs inference",
+      "Added OUTPUT FORMAT with clear section headers"
+    ],
+    "test_cases_run": 0,
+    "test_cases_passed": 0,
+    "sample_outputs": [],
+    "relevance_score": null,
+    "coherence_score": null,
+    "format_compliance": null,
+    "compared_with": null,
+    "improvement_notes": null
+  },
+  {
+    "prompt_name": "retrieval_query",
+    "version": "1.0",
+    "timestamp": "2024-01-20",
+    "change_type": "initial",
+    "description": "Initial version of retrieval_query prompt",
+    "rationale": "Baseline prompt for generating RAG search queries from image analysis",
+    "changes_made": [
+      "Created initial prompt structure",
+      "Defined query generation task",
+      "Added constraints for query length and specificity",
+      "Added output format for 2-3 search queries"
+    ],
+    "test_cases_run": 0,
+    "test_cases_passed": 0,
+    "sample_outputs": [],
+    "relevance_score": null,
+    "coherence_score": null,
+    "format_compliance": null,
+    "compared_with": null,
+    "improvement_notes": null
+  },
+  {
+    "prompt_name": "tactical_assessment",
+    "version": "1.0",
+    "timestamp": "2024-01-20",
+    "change_type": "initial",
+    "description": "Initial version of tactical_assessment prompt",
+    "rationale": "Baseline prompt for synthesizing image analysis and historical context into actionable intelligence",
+    "changes_made": [
+      "Created initial prompt structure",
+      "Defined JSON output schema",
+      "Added threat level definitions",
+      "Added confidence and caveats requirements",
+      "Integrated context placeholders for RAG"
+    ],
+    "test_cases_run": 0,
+    "test_cases_passed": 0,
+    "sample_outputs": [],
+    "relevance_score": null,
+    "coherence_score": null,
+    "format_compliance": null,
+    "compared_with": null,
+    "improvement_notes": null
+  },
+  {
+    "prompt_name": "follow_up",
+    "version": "1.0",
+    "timestamp": "2024-01-20",
+    "change_type": "initial",
+    "description": "Initial version of follow_up prompt",
+    "rationale": "Baseline prompt for conversational follow-up after tactical assessments",
+    "changes_made": [
+      "Created initial prompt structure",
+      "Added conversation context integration",
+      "Added previous analysis reference",
+      "Defined constraints for staying within scope"
+    ],
+    "test_cases_run": 0,
+    "test_cases_passed": 0,
+    "sample_outputs": [],
+    "relevance_score": null,
+    "coherence_score": null,
+    "format_compliance": null,
+    "compared_with": null,
+    "improvement_notes": null
+  },
+  {
+    "prompt_name": "disambiguation",
+    "version": "1.0",
+    "timestamp": "2024-01-20",
+    "change_type": "initial",
+    "description": "Initial version of disambiguation prompt",
+    "rationale": "Handle ambiguous user queries by generating clarifying questions",
+    "changes_made": [
+      "Created prompt for ambiguity resolution",
+      "Defined four ambiguity categories: scope, intent, format, priority",
+      "Added output format with clarifying questions",
+      "Added default interpretation fallback"
+    ],
+    "test_cases_run": 0,
+    "test_cases_passed": 0,
+    "sample_outputs": [],
+    "relevance_score": null,
+    "coherence_score": null,
+    "format_compliance": null,
+    "compared_with": null,
+    "improvement_notes": null
+  },
+  {
+    "prompt_name": "error_fallback",
+    "version": "1.0",
+    "timestamp": "2024-01-20",
+    "change_type": "initial",
+    "description": "Initial version of error_fallback prompt",
+    "rationale": "Graceful degradation when primary analysis fails",
+    "changes_made": [
+      "Created fallback response template",
+      "Added status reporting structure",
+      "Added recommended actions section",
+      "Integrated cached data placeholder"
+    ],
+    "test_cases_run": 0,
+    "test_cases_passed": 0,
+    "sample_outputs": [],
+    "relevance_score": null,
+    "coherence_score": null,
+    "format_compliance": null,
+    "compared_with": null,
+    "improvement_notes": null
+  },
+  {
+    "prompt_name": "system_context",
+    "version": "1.0",
+    "timestamp": "2024-01-20",
+    "change_type": "initial",
+    "description": "Initial version of system_context prompt",
+    "rationale": "Establish consistent system identity and behavioral guidelines across all interactions",
+    "changes_made": [
+      "Defined Sentinel system identity",
+      "Listed system capabilities",
+      "Established core behavioral principles",
+      "Added ethical constraints section",
+      "Added session context integration"
+    ],
+    "test_cases_run": 0,
+    "test_cases_passed": 0,
+    "sample_outputs": [],
+    "relevance_score": null,
+    "coherence_score": null,
+    "format_compliance": null,
+    "compared_with": null,
+    "improvement_notes": null
+  }
+]
