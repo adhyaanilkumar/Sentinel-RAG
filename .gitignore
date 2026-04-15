@@ -17,6 +17,8 @@ data/results/
 *.index
 
 # IDE
+.cursor/
+.claude/
 .vscode/
 .idea/
 *.swp
