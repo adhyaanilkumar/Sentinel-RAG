@@ -1,0 +1,62 @@
+# Sentinel-RAG Configuration
+
+llm_provider: openai
+openai_model: gpt-4o-mini
+gemini_model: gemini-2.0-flash
+
+domain: military
+
+embedding:
+  model_name: all-MiniLM-L6-v2
+  dimension: 384
+
+retrieval:
+  top_k: 10
+  similarity_threshold: 0.3
+  chunk_size: 512
+  chunk_overlap: 64
+
+graph:
+  cross_ref_patterns:
+    - "(?:see|refer to|per|pursuant to|in accordance with|as described in|as defined in|IAW)\\s+(?:FM|ATP|ADP|AR|TC|JP|ADRP)\\s+[\\d\\-]+(?:[,.]\\s*(?:Chapter|Section|Paragraph|Para|Table|Figure|Appendix)\\s+[\\w\\d\\-.]+)?"
+    - "(?:see|refer to)\\s+(?:Chapter|Section|Paragraph|Para|Annex|Appendix|Table|Figure)\\s+[\\w\\d\\-.]+"
+    - "(?:as (?:defined|described|discussed|outlined) in)\\s+(?:Chapter|Section|Paragraph)\\s+[\\w\\d\\-.]+"
+  entity_types:
+    - unit
+    - location
+    - equipment
+    - operation
+    - doctrine_term
+    - personnel_role
+    - threat
+    - time_reference
+  adjacency_same_section_bonus: 1.0
+  adjacency_cross_section_factor: 0.5
+  entity_max_chunk_frequency: 200
+
+css:
+  weights:
+    relevance: 2.0
+    context_cohesion: 0.4
+    subquery_coverage: 1.5
+    cross_ref_bonus: 1.2
+    entity_overlap: 0.8
+    temporal_recency: 1.0
+  token_budget: 3000
+  redundancy_threshold: 0.92
+
+temporal:
+  decay_function: exponential
+  half_life_hours: 72
+  stale_threshold_hours: 168
+  flag_stale: true
+
+evaluation:
+  significance_level: 0.05
+  min_queries: 40
+  ragas_metrics:
+    - context_recall
+    - context_precision
+    - faithfulness
+    - answer_correctness
+    - answer_relevancy
