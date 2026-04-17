@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import pickle
 from pathlib import Path
 
@@ -73,7 +74,9 @@ class KnowledgeGraph:
                 continue
             for neighbor in self.graph.neighbors(current):
                 edge_weight = self.graph[current][neighbor].get("weight", 0.5)
-                new_weight = cum_weight + edge_weight
+                neighbor_degree = self.graph.degree(neighbor)
+                dampened = edge_weight / math.log(2 + neighbor_degree)
+                new_weight = max(cum_weight, dampened)
                 if neighbor not in visited or new_weight > visited[neighbor]:
                     visited[neighbor] = new_weight
                     frontier.append((neighbor, new_weight, hops + 1))

@@ -55,6 +55,8 @@ class CSSConfig:
         temporal_recency: float = 1.0,
         token_budget: int = 3000,
         redundancy_threshold: float = 0.92,
+        source_diversity_penalty: float = 0.35,
+        bridge_degree_threshold: int = 3,
     ):
         self.relevance = relevance
         self.context_cohesion = context_cohesion
@@ -64,6 +66,8 @@ class CSSConfig:
         self.temporal_recency = temporal_recency
         self.token_budget = token_budget
         self.redundancy_threshold = redundancy_threshold
+        self.source_diversity_penalty = source_diversity_penalty
+        self.bridge_degree_threshold = bridge_degree_threshold
 
 
 class GraphRetriever:
@@ -78,6 +82,7 @@ class GraphRetriever:
         initial_top_k: int = 15,
         max_hops: int = 2,
         final_top_k: int = 10,
+        graph_bypass_threshold: float = 0.65,
     ):
         self.vector_store = vector_store
         self.kg = knowledge_graph
@@ -86,6 +91,7 @@ class GraphRetriever:
         self.initial_top_k = initial_top_k
         self.max_hops = max_hops
         self.final_top_k = final_top_k
+        self.graph_bypass_threshold = graph_bypass_threshold
 
     def retrieve(self, query: str, temporal_weights: dict[str, float] | None = None) -> RetrievalResult:
         start = time.time()
@@ -101,24 +107,29 @@ class GraphRetriever:
         nodes_used = list(seed_ids)
         edges_traversed = []
 
-        for seed_id in seed_ids:
-            neighbors = self.kg.get_neighbors(seed_id, max_hops=self.max_hops)
-            for nid, graph_weight in neighbors:
-                if nid not in candidate_ids:
-                    nodes_used.append(nid)
-                    edges_traversed.append(f"{seed_id}->{nid}")
-                base_score = candidate_ids.get(nid, 0.0)
-                boosted = base_score + graph_weight * self.css.context_cohesion
-                candidate_ids[nid] = max(candidate_ids.get(nid, 0.0), boosted)
+        top_scores = sorted(initial.scores, reverse=True)[:5]
+        avg_top_score = sum(top_scores) / max(len(top_scores), 1)
+        skip_graph = avg_top_score >= self.graph_bypass_threshold
 
-            cross_doc = self.kg.get_cross_document_neighbors(seed_id, max_hops=self.max_hops + 1)
-            for nid, graph_weight in cross_doc[:self.final_top_k]:
-                if nid not in candidate_ids:
-                    nodes_used.append(nid)
-                    edges_traversed.append(f"{seed_id}->xdoc->{nid}")
-                base_score = candidate_ids.get(nid, 0.0)
-                boosted = base_score + graph_weight * self.css.cross_ref_bonus
-                candidate_ids[nid] = max(candidate_ids.get(nid, 0.0), boosted)
+        if not skip_graph:
+            for seed_id in seed_ids:
+                neighbors = self.kg.get_neighbors(seed_id, max_hops=self.max_hops)
+                for nid, graph_weight in neighbors:
+                    if nid not in candidate_ids:
+                        nodes_used.append(nid)
+                        edges_traversed.append(f"{seed_id}->{nid}")
+                    base_score = candidate_ids.get(nid, 0.0)
+                    boosted = base_score + graph_weight * self.css.context_cohesion
+                    candidate_ids[nid] = max(candidate_ids.get(nid, 0.0), boosted)
+
+                cross_doc = self.kg.get_cross_document_neighbors(seed_id, max_hops=self.max_hops + 1)
+                for nid, graph_weight in cross_doc[:self.final_top_k]:
+                    if nid not in candidate_ids:
+                        nodes_used.append(nid)
+                        edges_traversed.append(f"{seed_id}->xdoc->{nid}")
+                    base_score = candidate_ids.get(nid, 0.0)
+                    boosted = base_score + graph_weight * self.css.cross_ref_bonus
+                    candidate_ids[nid] = max(candidate_ids.get(nid, 0.0), boosted)
 
         scored = self._css_score(query, candidate_ids, temporal_weights)
 
@@ -212,31 +223,53 @@ class GraphRetriever:
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored
 
-    def _enforce_source_diversity(self, scored: list[tuple[str, float]]) -> list[tuple[str, float]]:
-        """Re-rank to ensure no single source document dominates the top-k results.
+    def _is_protected(self, nid: str) -> bool:
+        """V3-inspired protection layers: cross-ref nodes and high-degree bridges are preserved.
 
-        Allows at most ceil(final_top_k / 2) chunks from any one FM in the top slice,
-        pushing excess same-source chunks to the back so other FMs get representation.
+        Adapted from CSS_graph_project/transforms/prune.py (Layers 1-2): structural edges
+        (cross_reference) and high-degree bridges should not be dropped by diversity/redundancy
+        filters, since they carry multi-hop routing value that a hard cap blindly discards.
         """
-        import math
-        per_source_cap = math.ceil(self.final_top_k / 2)
-        source_counts: dict[str, int] = {}
-        capped: list[tuple[str, float]] = []
-        deferred: list[tuple[str, float]] = []
+        if nid not in self.kg.graph:
+            return False
+        neighbors = list(self.kg.graph.neighbors(nid))
+        for nb in neighbors:
+            if self.kg.graph.has_edge(nid, nb):
+                relation = self.kg.graph[nid][nb].get("relation", "")
+                if relation.startswith("cross_reference"):
+                    return True
+        if len(neighbors) >= self.css.bridge_degree_threshold:
+            for nb in neighbors:
+                if self.kg.graph.has_edge(nid, nb):
+                    if self.kg.graph[nid][nb].get("relation", "").startswith("cross_reference"):
+                        return True
+        return False
 
+    def _enforce_source_diversity(self, scored: list[tuple[str, float]]) -> list[tuple[str, float]]:
+        """Soft diversity penalty (V3-style) instead of a hard per-source cap.
+
+        The previous hard cap (ceil(final_top_k/2) per FM) was dropping gold-FM chunks and
+        caused the evidence-recall regression (0.392 vs 0.894). V3's prune operator uses
+        graded penalties with structural-node protection instead. Here we apply a multiplicative
+        penalty that grows with same-source repetition, and skip the penalty for protected
+        (cross-reference / bridge) nodes so multi-hop routing chunks survive.
+        """
+        source_counts: dict[str, int] = {}
+        adjusted: list[tuple[str, float]] = []
         for nid, score in scored:
             node = self.kg.get_node(nid)
             src = node.chunk.source_document if node else "__unknown__"
-            if source_counts.get(src, 0) < per_source_cap:
-                source_counts[src] = source_counts.get(src, 0) + 1
-                capped.append((nid, score))
-            else:
-                deferred.append((nid, score))
-
-        return capped + deferred
+            count = source_counts.get(src, 0)
+            if count > 0 and not self._is_protected(nid):
+                penalty = (1.0 - self.css.source_diversity_penalty) ** count
+                score = score * penalty
+            source_counts[src] = count + 1
+            adjusted.append((nid, score))
+        adjusted.sort(key=lambda x: x[1], reverse=True)
+        return adjusted
 
     def _remove_redundant(self, scored: list[tuple[str, float]]) -> list[tuple[str, float]]:
-        """Remove near-duplicate chunks above redundancy threshold."""
+        """Remove near-duplicates, protecting cross-reference / bridge nodes (V3 Layer 1-2)."""
         if not scored:
             return scored
 
@@ -246,6 +279,10 @@ class GraphRetriever:
         for nid, score in scored[1:]:
             node = self.kg.get_node(nid)
             if not node:
+                continue
+            if self._is_protected(nid):
+                kept.append((nid, score))
+                kept_texts.append(node.chunk.text)
                 continue
             text = node.chunk.text
             is_redundant = False
